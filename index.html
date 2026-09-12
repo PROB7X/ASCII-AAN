@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ASC II AAAN</title>
+    <style>
+        @keyframes gradientBg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes fadeOutAnim {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        body {
+            background: linear-gradient(-45deg, #050811, #0b1528, #051a3a, #020b14);
+            background-size: 400% 400%;
+            animation: gradientBg 12s ease infinite;
+            color: #c5c6c7;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #rotate-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #050811;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            text-align: center;
+            color: #66fcf1;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+        pre {
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            line-height: 1.15;
+            white-space: pre;
+            display: block;
+        }
+        #battle-map-block {
+            display: inline-block;
+            font-size: 13px;
+            line-height: 1.1;
+            text-align: left;
+            white-space: pre;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+            word-break: keep-all;
+            overflow: hidden;
+        }
+        #box-anim-block {
+            display: block;
+            font-size: 15px;
+            line-height: 1.2;
+            text-align: center;
+            white-space: pre;
+        }
+        .fade-out-screen {
+            animation: fadeOutAnim 0.4s ease forwards;
+        }
+        .cyan { color: #66fcf1; }
+        .gold { color: #facf5a; }
+        .purple { color: #b55fe6; }
+        .red { color: #ff4a5a; }
+        .green { color: #2ecc71; }
+        .brick { color: #e67e22; }
+        .gray { color: #555; }
+        
+        .ascii-btn {
+            background: none;
+            border: none;
+            font-family: inherit;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin: 2px;
+        }
+        .btn-dir { color: #facf5a; font-size: 28px; font-weight: bold; text-shadow: 0 0 5px #facf5a; }
+        
+        .btn-action-block {
+            border: 2px solid #3498db;
+            color: #3498db;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-shadow: 0 0 5px #3498db;
+        }
+        .btn-super-block {
+            border: 2px solid #9b5de5;
+            color: #9b5de5;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-shadow: 0 0 5px #9b5de5;
+            opacity: 0.3;
+        }
+        .super-ready {
+            opacity: 1 !important;
+            box-shadow: 0 0 10px #9b5de5;
+            color: #fff !important;
+            border-color: #fff !important;
+        }
+        .btn-nav { color: #66fcf1; font-size: 16px; text-shadow: 0 0 3px #66fcf1; }
+        .ascii-btn:hover { color: #fff !important; }
+        
+        .top-bar-layout {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            font-size: 15px;
+            padding: 0 10px;
+        }
+        .bs-menu {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .side-btns { display: flex; flex-direction: column; gap: 10px; }
+        .lobby-hero-click { cursor: pointer; }
+
+        .battle-layout {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+            padding: 0 30px 0 30px;
+            box-sizing: border-box;
+        }
+        .dpad-large {
+            display: grid;
+            grid-template-columns: repeat(3, 85px);
+            grid-template-rows: repeat(3, 55px);
+            gap: 6px;
+        }
+        .actions-right { display: flex; align-items: center; gap: 30px; }
+        
+        .full-swipe-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            width: 90vw;
+            gap: 20px;
+            padding: 15px;
+            scrollbar-width: none;
+        }
+        .full-swipe-container::-webkit-scrollbar { display: none; }
+        
+        /* Изменение: Клик по карточке теперь открывает детальный профиль */
+        .swipe-card {
+            scroll-snap-align: center;
+            flex-shrink: 0;
+            width: 280px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #66fcf1;
+            padding: 15px;
+            text-align: center;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+        .swipe-card:hover { border-color: #fff; }
+
+        .info-icon {
+            color: #facf5a;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px dashed #facf5a;
+            padding: 0 5px;
+            margin-left: 5px;
+        }
+        
+        /* 2) Окно детального просмотра персонажа */
+        .profile-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 600px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px dashed #66fcf1;
+        }
+        .brawler-skin-box {
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #facf5a;
+        }
+        .profile-layout-controls {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<div id="rotate-overlay">
+    <h2 class="cyan">ПЕРЕВЕРНИТЕ УСТРОЙСТВО ГОРИЗОНТАЛЬНО</h2>
+    <button class="ascii-btn btn-dir" onclick="requestFullscreenAndLock()">[ НА ВЕСЬ ЭКРАН ]</button>
+</div>
+
+<div id="game-container">
+    <div id="top-bar" class="top-bar-layout"></div>
+    <div style="flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%;">
+        <div id="output"></div>
+    </div>
+    <div id="controls" class="input-area"></div>
+</div>
+
+<script>
+const output = document.getElementById('output');
+const controls = document.getElementById('controls');
+const topBar = document.getElementById('top-bar');
+const rotateOverlay = document.getElementById('rotate-overlay');
+const gameContainer = document.getElementById('game-container');
+let isInitialized = false;
+let battleInterval = null;
+
+let player = {
+    name: '', honor: 0, coins: 200,
+    currentBrawler: 'Рыцарь', currentMode: '1v1',
+    boxes: { common: 2, big: 1, mega: 0 },
+    unlockedBrawlers: ['Рыцарь'],
+    brawlerLevels: { 'Рыцарь': 1, 'Арбалетчик': 1, 'Самурай': 1, 'Тёмный Рыцарь': 1 },
+    brawlerPP: { 'Рыцарь': 0, 'Арбалетчик': 0, 'Самурай': 0, 'Тёмный Рыцарь': 0 }
+};
+
+function loadGameData() {
+    try {
+        const saved = localStorage.getItem('ascii_stars_final_save_v14');
+        if (saved) {
+            let parsed = JSON.parse(saved);
+            if (!parsed.brawlerLevels) parsed.brawlerLevels = { 'Рыцарь': 1, 'Арбалетчик': 1, 'Самурай': 1, 'Тёмный Рыцарь': 1 };
+            if (!parsed.brawlerPP) parsed.brawlerPP = { 'Рыцарь': 0, 'Арбалетчик': 0, 'Самурай': 0, 'Тёмный Рыцарь': 0 };
+            player = parsed;
+        }
+    } catch(e) {}
+}
+
+function save() {
+    try { localStorage.setItem('ascii_stars_final_save_v14', JSON.stringify(player)); } catch(e){}
+}
+loadGameData();
+
+// 2) Добавлены Классы персонажей для детального профиля
+const BRAWLERS = {
+    'Рыцарь': { color: 'cyan', hp: 120, dmg: 16, speed: 1, symbol: 'O', type: 'Начальный', class: 'Танк / Защитник', desc: 'Классический латник. Медленный, но держит много ударов.', art: ["   O   ", "  /|\\  ", "  / \\  "] },
+    'Арбалетчик': { color: 'purple', hp: 90, dmg: 22, speed: 2, symbol: 'O', type: 'Редкий', class: 'Снайпер / Дальний бой', desc: 'Высокая скорость бега и сокрушительные выстрелы издалека.', art: ["  [O]  ", "  /|🎯 ", "  / \\  "] },
+    'Самурай': { color: 'gold', hp: 110, dmg: 18, speed: 1, symbol: 'O', type: 'Сверхредкий', class: 'Убийца / Ближний бой', desc: 'Быстрые выпады катаной. Наносит критический урон.', art: ["  ╭O╮  ", "  /|\\  ", "  / \\  "] },
+    'Тёмный Рыцарь': { color: 'red', hp: 200, dmg: 35, speed: 1, symbol: 'O', type: 'Легендарный', class: 'Разрушитель / Гипергибрид', desc: 'Редчайший титан подземелий. Огромный урон по площади.', art: ["  (🪖)  ", "  /▓\\  ", "  / \\  "] }
+};
+
+const BOX_CHANCES = {
+    common: "Монеты: 100%\nОчки силы: 80%\nНовый Боец: 10%",
+    big: "Монеты: 100%\nОчки силы (x2): 100%\nНовый Боец: 25%",
+    mega: "Монеты: 100%\nОчки силы (x5): 100%\nНовый Боец: 55%"
+};
+
+const BOX_FRAMES = {
+    common: [["[  КЕЙС  ]", "[  (📦)  ]"], ["[  ОТКРЫТ ]", "[   \\_/  ]"]],
+    big: [["[ БИГ КЕЙС ]", "[ 🔷📦🔷 ]"], ["[  ОТКРЫТ ]", "[   \\_/  ]"]],
+    mega: [["[ МЕГАЯЩИК ]", "[ 🟥📦🟨 ]"], ["[  ОТКРЫТ ]", "[   \\_/  ]"]]
+};
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+function checkOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if (isLandscape || isInitialized) {
+        rotateOverlay.style.display = 'none';
+        gameContainer.style.display = 'flex';
+        if (!isInitialized) { isInitialized = true; startLoading(); }
+    } else {
+        rotateOverlay.style.display = 'flex';
+        gameContainer.style.display = 'none';
+    }
+}
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('load', checkOrientation);
+
+function requestFullscreenAndLock() {
+    const docEl = document.documentElement;
+    const enterFullscreen = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+    if (enterFullscreen) {
+        enterFullscreen.call(docEl).then(() => {
+            try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch(e) {}
+            rotateOverlay.style.display = 'none'; gameContainer.style.display = 'flex';
+            if (!isInitialized) { isInitialized = true; startLoading(); }
+        }).catch(() => {
+            rotateOverlay.style.display = 'none'; gameContainer.style.display = 'flex';
+            if (!isInitialized) { isInitialized = true; startLoading(); }
+        });
+    } else {
+        rotateOverlay.style.display = 'none'; gameContainer.style.display = 'flex';
+        if (!isInitialized) { isInitialized = true; startLoading(); }
+    }
+}
+
+function updateTopBarLobby() {
+    topBar.innerHTML = `
+        <div>Боец: <span class="${BRAWLERS[player.currentBrawler].color}">${player.currentBrawler} (Сила ${player.brawlerLevels[player.currentBrawler]})</span></div>
+        <div>
+            <span class="cyan">🎖️ Честь: ${player.honor}</span> | 
+            <span class="gold">🪙 Монеты: ${player.coins}</span>
+        </div>
+    `;
+}
+
+function updateTopBarBattle() {
+    topBar.innerHTML = `
+        <div>Режим: <span class="purple">${player.currentMode.toUpperCase()}</span></div>
+        <div>
+            <span class="cyan">🎖️ Честь: ${player.honor}</span> | 
+            Заряд Ульты: <span class="purple"><b>${combat.superCharge}%</b></span>
+        </div>
+    `;
+}
+async function startLoading() {
+    output.innerHTML = `
+        <div id="logo-fade-box">
+            <center>
+                <br><br><br><br><br>
+                <h1 style="font-size: 42px; font-weight: bold; margin: 0; color: #facf5a; letter-spacing: 5px;">P7X</h1>
+                <h1 style="font-size: 36px; font-weight: bold; margin: 5px 0 0 0; color: #66fcf1; letter-spacing: 2px;">STUDIO</h1>
+            </center>
+        </div>
+    `;
+    await delay(1500); 
+    const box = document.getElementById('logo-fade-box');
+    if(box) box.classList.add('fade-out-screen');
+    await delay(400); 
+    if(!player.name) askName(); else mainMenu();
+}
+
+function askName() {
+    output.innerHTML = `<center><h2>ВВЕДИТЕ НИКНЕЙМ</h2><br><input type="text" id="nameInp" style="background:#000; border:1px dashed #66fcf1; color:#66fcf1; padding:8px; text-align:center;" placeholder="Имя" maxlength="12"></center>`;
+    controls.innerHTML = `<button class="ascii-btn btn-nav" onclick="player.name=document.getElementById('nameInp').value||'Player';save();mainMenu();">[ ОК ]</button>`;
+}
+
+function mainMenu() {
+    if(battleInterval) { clearInterval(battleInterval); battleInterval = null; }
+    updateTopBarLobby();
+    const b = BRAWLERS[player.currentBrawler];
+    
+    let mainView = `<center><br><br><div class="lobby-hero-click" onclick="changeBrawlerMenu()"><pre>`;
+    for(let i=0; i<3; i++) { mainView += `<span class="${b.color}">${b.art[i]}</span>\n`; }
+    mainView += `</pre></div></center>`;
+    output.innerHTML = mainView;
+
+    controls.innerHTML = `
+        <div class="bs-menu">
+            <div class="side-btns">
+                <button class="ascii-btn btn-nav" onclick="changeBrawlerMenu()">[ БОЙЦЫ ]</button>
+                <button class="ascii-btn btn-nav" onclick="settingsMenu()">[ ⚙️ ]</button>
+            </div>
+            <div style="text-align: center;">
+                <button class="ascii-btn btn-super" style="color: #b55fe6;" onclick="selectModeMenu()">[ ${player.currentMode.toUpperCase()} ]</button><br>
+                <button class="ascii-btn btn-dir" style="font-size: 24px;" onclick="setupBattleArena()">⚡ [ БОЙ ] ⚡</button>
+            </div>
+            <div class="side-btns">
+                <button class="ascii-btn btn-nav gold" onclick="shopMenu()">[ МАГАЗИН ]</button>
+            </div>
+        </div>
+    `;
+}
+
+function settingsMenu() {
+    output.innerHTML = `<center><h3>НАСТРОЙКИ</h3>Смена ника:<br><br><input type="text" id="newNick" placeholder="Имя" value="${player.name}"></center>`;
+    controls.innerHTML = `<button class="ascii-btn btn-nav" onclick="if(document.getElementById('newNick').value){player.name=document.getElementById('newNick').value;save();}mainMenu();">[ СОХРАНИТЬ ]</button> <button class="ascii-btn btn-nav" onclick="mainMenu()">[ НАЗАД ]</button>`;
+}
+function changeBrawlerMenu() {
+    updateTopBarLobby();
+    let listHtml = `<center><h3>ТВОИ БОЙЦЫ</h3><div class="full-swipe-container">`;
+    Object.keys(BRAWLERS).forEach(bKey => {
+        const b = BRAWLERS[bKey]; const has = player.unlockedBrawlers.includes(bKey);
+        const lvl = player.brawlerLevels[bKey]; const pp = player.brawlerPP[bKey];
+        const needPP = lvl * 20;
+
+        listHtml += `
+            <div class="swipe-card" style="border-color: ${has ? '#66fcf1' : '#555'}" onclick="viewBrawlerProfile('${bKey}')">
+                <span class="${b.color}"><b>${bKey}</b></span><br><span class="gray">[Ур. ${lvl}]</span><br><br>
+                <pre>${b.art.join("\n")}</pre><br>Очки силы: ${pp}/${needPP}<br>
+                ${has ? `<span class="green">[ Открыть профиль ]</span>` : `<span class="red">[ ЗАБЛОКИРОВАН ]</span>`}
+            </div>
+        `;
+    });
+    listHtml += `</div></center>`; output.innerHTML = listHtml; controls.innerHTML = `<button class="ascii-btn btn-nav" onclick="mainMenu()">[ НАЗАД ]</button>`;
+}
+
+function viewBrawlerProfile(bKey) {
+    const b = BRAWLERS[bKey]; const has = player.unlockedBrawlers.includes(bKey);
+    const lvl = player.brawlerLevels[bKey]; const pp = player.brawlerPP[bKey];
+    const needPP = lvl * 20; const upgradeCost = lvl * 50;
+    
+    const hpCalc = Math.floor(b.hp * (1 + (lvl-1)*0.1));
+    const dmgCalc = Math.floor(b.dmg * (1 + (lvl-1)*0.1));
+
+    let skinRender = "";
+    b.art.forEach(line => { skinRender += `<span class="${b.color}">${line}</span>\n`; });
+
+    let prof = `
+        <center><div class="profile-container">
+            <div style="text-align: left; width: 260px; font-size:13px; line-height:1.3;">
+                Имя: <span class="cyan"><b>${bKey}</b></span><br>
+                Класс: <span class="gold">${b.class}</span><br>
+                Редкость: <span class="${b.color}">${b.type}</span><br>
+                Сила (Уровень): <span class="purple">${lvl}</span><br><br>
+                ❤️ Здоровье: <span class="green">${hpCalc} HP</span><br>
+                ⚔️ Урон атаки: <span class="red">${dmgCalc} ATK</span><br><br>
+                <span class="gray">${b.desc}</span>
+            </div>
+            <div class="brawler-skin-box"><pre>${skinRender}</pre></div>
+        </div></center>
+    `;
+    output.innerHTML = prof;
+    
+    controls.innerHTML = `
+        <div class="profile-layout-controls">
+            <button class="ascii-btn btn-nav" onclick="changeBrawlerMenu()">[ НАЗАД ]</button>
+            <div style="display:flex; gap:10px;">
+                ${has ? `
+                    <button class="ascii-btn gold" style="border:1px solid #facf5a;" onclick="upgradeBrawlerFromProfile('${bKey}', ${upgradeCost}, ${needPP})">[ АПГРЕЙД: ${upgradeCost}🪙 (${pp}/${needPP} PP) ]</button>
+                    <button class="ascii-btn cyan" style="font-size: 18px; border:1px solid #66fcf1;" onclick="player.currentBrawler='${bKey}';save();mainMenu();">[ ВЫБРАТЬ ]</button>
+                ` : `<span class="red">[ БОЕЦ ЗАБЛОКИРОВАН ]</span>`}
+            </div>
+        </div>
+    `;
+}
+
+function upgradeBrawlerFromProfile(name, cost, needPP) {
+    if(player.brawlerPP[name] >= needPP && player.coins >= cost) {
+        player.coins -= cost; player.brawlerPP[name] -= needPP; player.brawlerLevels[name]++; save(); viewBrawlerProfile(name);
+    } else { alert("Недостаточно монет или очков силы!"); }
+}
+
+function selectModeMenu() {
+    let modeHtml = `<center><h3>ВЫБОР РЕЖИМА</h3><br>`;
+    const modes = [
+        { id: 'обучение', title: '[ КАРТА ОБУЧЕНИЯ ]' },
+        { id: '1v1', title: '[ ДУЭЛЬ 1v1 ]' },
+        { id: '1v5', title: '[ СТОЛКНОВЕНИЕ 1v5 ]' },
+        { id: '1v10', title: '[ ШОУДАУН 1v10 ]' }
+    ];
+    modes.forEach(m => { modeHtml += `<button class="ascii-btn btn-nav" style="font-size:16px; display:block; margin:8px auto;" onclick="player.currentMode='${m.id}';save();mainMenu();">${m.title}</button>`; });
+    modeHtml += `</center>`; output.innerHTML = modeHtml; controls.innerHTML = `<button class="ascii-btn btn-nav" onclick="mainMenu()">[ НАЗАД ]</button>`;
+}
+function shopMenu() {
+    updateTopBarLobby();
+    let shopHtml = `<center><h3>МАГАЗИН ЯЩИКОВ</h3><div class="full-swipe-container">`;
+    const items = [
+        { id: 'common', name: 'ОБЫЧНЫЙ ЯЩИК', price: 30, count: player.boxes.common, color: 'cyan', art: ` .---.\n/   /|\n📦 |/\n'---'` },
+        { id: 'big', name: 'БОЛЬШОЙ ЯЩИК', price: 75, count: player.boxes.big, color: 'purple', art: ` ┌─────┐\n │🔷📦🔷│/\n └─────┘` },
+        { id: 'mega', name: 'МЕГАЯЩИК', price: 150, count: player.boxes.mega, color: 'gold', art: ` ╔═════╗\n ║🟥📦🟨║/\n ╚═════╝` }
+    ];
+    items.forEach(curr => { shopHtml += `<div class="shop-slide"><span class="${curr.color}"><b>${curr.name}</b></span><span class="info-icon" onclick="showChances('${curr.id}'); event.stopPropagation();">[ i ]</span><br><br><pre>${curr.art}</pre><br>У тебя: ${curr.count}<br><br><button class="ascii-btn gold" onclick="buyBox('${curr.id}', ${curr.price}); event.stopPropagation();">[ ${curr.price}🪙 ]</button><br><button class="ascii-btn purple" onclick="animateBoxOpening('${curr.id}'); event.stopPropagation();">[ ОТКРЫТЬ ]</button></div>`; });
+    shopHtml += `</div></center>`; output.innerHTML = shopHtml; controls.innerHTML = `<button class="ascii-btn btn-nav" onclick="mainMenu()">[ НАЗАД ]</button>`;
+}
+function showChances(id) { alert(`Шансы выпадения лута:\n\n${BOX_CHANCES[id]}`); }
+function buyBox(id, p) { if(player.coins >= p) { player.coins -= p; player.boxes[id]++; save(); shopMenu(); } else { alert("Мало монет!"); } }
+
+async function animateBoxOpening(id) {
+    if(player.boxes[id] <= 0) { alert("У тебя нет этого кейса!"); return; }
+    player.boxes[id]--; save(); controls.innerHTML = '';
+    const frames = BOX_FRAMES[id];
+    for(let f=0; f<2; f++) { output.innerHTML = `<div id="box-anim-block">${frames[f].join("\n")}</div>`; await delay(500); }
+    
+    let mult = id === 'common' ? 1 : (id === 'big' ? 2 : 5);
+    let coinsGained = Math.floor((Math.random() * 15 + 15) * mult);
+    let ppGained = Math.floor((Math.random() * 10 + 10) * mult);
+    player.coins += coinsGained;
+    let bKeys = Object.keys(BRAWLERS); let randomBrawler = bKeys[Math.floor(Math.random() * bKeys.length)];
+    player.brawlerPP[randomBrawler] += ppGained;
+    let dropText = `🪙 +${coinsGained} Монет | 🔺 +${ppGained} Очков силы [${randomBrawler}]`;
+    
+    const r = Math.random() * 100;
+    let bChance = id === 'common' ? 10 : (id === 'big' ? 25 : 55);
+    if(r < bChance) {
+        const locked = Object.keys(BRAWLERS).filter(x => !player.unlockedBrawlers.includes(x));
+        if(locked.length > 0) {
+            const nb = locked[Math.floor(Math.random()*locked.length)]; player.unlockedBrawlers.push(nb);
+            dropText += `<br><span class="gold">🔥 НОВЫЙ БОЕЦ: ${nb}!</span>`;
+        }
+    }
+    save();
+    output.innerHTML = `<div id="box-anim-block"><br><h3>ОТКРЫТО!</h3><br>${dropText}</div>`;
+    controls.innerHTML = `<div style="display:flex; justify-content:center; width:100%;"><button class="ascii-btn gold" onclick="shopMenu()">[ ЗАБРАТЬ ]</button></div>`;
+}
+let combat = {};
+
+function setupBattleArena() {
+    let isTraining = (player.currentMode === 'обучение');
+    let enemiesCount = isTraining ? 3 : (player.currentMode === '1v1' ? 1 : (player.currentMode === '1v5' ? 4 : 8));
+    
+    let b = BRAWLERS[player.currentBrawler];
+    let lvl = player.brawlerLevels[player.currentBrawler];
+    controls.innerHTML = '';
+    
+    combat = {
+        w: 54, h: 13, pX: 4, pY: 6, 
+        pHp: Math.floor(b.hp * (1 + (lvl-1)*0.1)), 
+        pMax: Math.floor(b.hp * (1 + (lvl-1)*0.1)), 
+        pDmg: Math.floor(b.dmg * (1 + (lvl-1)*0.1)), 
+        ammo: 3, superCharge: 0, lastHitCoords: [], trainingMode: isTraining, enemies: []
+    };
+    
+    const types = Object.keys(BRAWLERS);
+    for(let i=0; i<enemiesCount; i++) {
+        let t = types[Math.floor(Math.random() * types.length)];
+        combat.enemies.push({
+            id: i, 
+            x: isTraining ? (14 + i * 11) : Math.floor(Math.random() * 35) + 12, 
+            y: isTraining ? 6 : Math.floor(Math.random() * 7) + 3,
+            hp: isTraining ? 80 : 50, 
+            max: isTraining ? 80 : 50, 
+            dmg: isTraining ? 0 : 12, 
+            speed: isTraining ? 0 : 1,
+            color: isTraining ? 'gold' : BRAWLERS[t].color, 
+            symbol: 'V', 
+            dead: false
+        });
+    }
+    
+    renderBattleArena();
+    battleInterval = setInterval(processBotsAI, 600);
+}
+
+function getHyphenHpBar(curr, max) {
+    let size = 5;
+    let filled = Math.max(0, Math.round((curr / max) * size));
+    return "<" + "-".repeat(filled) + " ".repeat(size - filled) + ">";
+}
+
+function renderBattleArena() {
+    updateTopBarBattle(); 
+    let mapText = "";
+    
+    for(let y=0; y<combat.h; y++) {
+        let line = "";
+        for(let x=0; x<combat.w; x++) {
+            let isWall = (x===0 || x===combat.w-1 || y===0 || y===combat.h-1);
+            let activeBot = combat.enemies.find(e => !e.dead && e.x === x && e.y === y);
+            let botHpOwner = combat.enemies.find(e => !e.dead && e.x === x && e.y === y-1);
+            
+            if (isWall) {
+                line += `<span class="brick">#</span>`;
+            } else if (x === combat.pX && y === combat.pY) {
+                line += `<span class="${BRAWLERS[player.currentBrawler].color}">O</span>`; 
+            } else if (combat.pX === x && y === combat.pY - 1) {
+                line += `<span class="green">${getHyphenHpBar(combat.pHp, combat.pMax)}</span>`; 
+            } else if (combat.pX === x && y === combat.pY - 2) {
+                line += `<span class="gold">${"⚡".repeat(combat.ammo)}</span>`; 
+            } else if (activeBot) {
+                line += `<span class="${activeBot.color}">V</span>`; 
+            } else if (botHpOwner) {
+                line += `<span class="red">${getHyphenHpBar(botHpOwner.hp, botHpOwner.max)}</span>`; 
+            } else {
+                let hitEffect = combat.lastHitCoords.find(c => c.x === x && c.y === y);
+                if (hitEffect) {
+                    line += hitEffect.type === 'super' ? `<span class="purple">✧</span>` : `<span class="gold">*</span>`;
+                } else {
+                    line += (x%8===0 && y%4===0) ? `<span class="gray">.</span>` : " "; 
+                }
+            }
+        }
+        mapText += line + "\n";
+    }
+    
+    combat.lastHitCoords = [];
+    output.innerHTML = `<div id="battle-map-block">${mapText}</div>`;
+
+    let superActive = combat.superCharge >= 100 ? "super-ready" : "";
+    controls.innerHTML = `
+        <div class="battle-layout">
+            <div class="dpad-large">
+                <div></div><button class="ascii-btn btn-dir" onclick="playerMove(0,-1)">[▲]</button><div></div>
+                <button class="ascii-btn btn-dir" onclick="playerMove(-1,0)">[◀]</button><div></div><button class="ascii-btn btn-dir" onclick="playerMove(1,0)">[▶]</button>
+                <div></div><button class="ascii-btn btn-dir" onclick="playerMove(0,1)">[▼]</button><div></div>
+            </div>
+            <div class="actions-right">
+                <button class="ascii-btn btn-super-block ${superActive}" onclick="playerActionAttack(true)">[ 🔥 ]</button>
+                <button class="ascii-btn btn-action-block" onclick="playerActionAttack(false)">[ ⚔️ ]</button>
+            </div>
+        </div>
+    `;
+}
+
+function playerMove(dx, dy) {
+    let nX = combat.pX + dx; let nY = combat.pY + dy;
+    if(nX > 0 && nX < combat.w-1 && nY > 0 && nY < combat.h-1) { combat.pX = nX; combat.pY = nY; }
+    renderBattleArena();
+}
+
+function processBotsAI() {
+    if(Math.random() > 0.4 && combat.ammo < 3) combat.ammo++;
+    combat.enemies.forEach(e => {
+        if(!e.dead) {
+            let steps = e.speed;
+            for(let s=0; s<steps; s++) {
+                let targetX = combat.pX; let targetY = combat.pY;
+                let sX = e.x + Math.sign(targetX - e.x); let sY = e.y + Math.sign(targetY - e.y);
+                if(sX === combat.pX && sY === combat.pY) {
+                    combat.pHp -= Math.floor(e.dmg);
+                } else if(sX > 0 && sX < combat.w-1 && sY > 0 && sY < combat.h-1) {
+                    e.x = sX; e.y = sY;
+                }
+            }
+        }
+    });
+    if(combat.pHp <= 0) finishBattle(false); else renderBattleArena();
+}
+
+function playerActionAttack(isSuper) {
+    if(!isSuper && combat.ammo <= 0) return;
+    if(isSuper && combat.superCharge < 100) return;
+    if(!isSuper) combat.ammo--;
+    if(isSuper) combat.superCharge = 0;
+    
+    let radius = isSuper ? 5.5 : 3.0;
+    for(let i = -2; i <= 2; i++) {
+        for(let j = -2; j <= 2; j++) { combat.lastHitCoords.push({ x: combat.pX + i, y: combat.pY + j, type: isSuper ? 'super' : 'normal' }); }
+    }
+
+    combat.enemies.forEach(e => {
+        if(!e.dead) {
+            let dist = Math.sqrt(Math.pow(combat.pX - e.x, 2) + Math.pow(combat.pY - e.y, 2));
+            if(dist <= radius) {
+                e.hp -= Math.floor(combat.pDmg * (isSuper ? 2.2 : 1.0));
+                if(!isSuper) combat.superCharge = Math.min(100, combat.superCharge + 25);
+                if(e.hp <= 0) e.dead = true;
+            }
+        }
+    });
+    if(combat.enemies.every(e => e.dead)) finishBattle(true); else renderBattleArena();
+}
+
+async function finishBattle(win) {
+    if(battleInterval) clearInterval(battleInterval); 
+    controls.innerHTML = ''; topBar.innerHTML = '';
+    
+    const b = BRAWLERS[player.currentBrawler];
+    let endHeroSkin = "";
+    b.art.forEach(line => { endHeroSkin += `<span class="${b.color}">${line}</span>\n`; });
+    
+    if(win) { 
+        if(!combat.trainingMode) { player.honor += 10; player.coins += 35; }
+        output.innerHTML = `
+            <center class="gold">
+                <h1>🏆 ПОБЕДА! </h1>
+                <p>${combat.trainingMode ? 'Обучение завершено!' : '+10 Очков Чести | +35 Монет'}</p>
+                <div style="border:1px dashed #facf5a; padding:10px; display:inline-block; background:rgba(0,0,0,0.3); margin-top:10px;">
+                    <pre>${endHeroSkin}</pre>
+                </div>
+            </center>`; 
+    } else {
+        if(!combat.trainingMode) player.honor = Math.max(0, player.honor - 5);
+        output.innerHTML = `
+            <center class="red">
+                <h1>💀 ПОРАЖЕНИЕ </h1>
+                <p>${combat.trainingMode ? 'Попробуй еще раз' : '-5 Очков Чести'}</p>
+                <div style="border:1px dashed #ff4a5a; padding:10px; display:inline-block; background:rgba(0,0,0,0.3); margin-top:10px;">
+                    <pre>${endHeroSkin}</pre>
+                </div>
+            </center>`;
+    }
+    save();
+    
+    await delay(2500);
+    controls.innerHTML = `<button class="ascii-btn btn-nav" onclick="mainMenu()">[ В ЛОББИ ]</button>`;
+}
+window.onload = checkOrientation;
+</script>
+</body>
+  </html>
